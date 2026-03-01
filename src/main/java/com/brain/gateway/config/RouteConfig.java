@@ -16,4 +16,10 @@ public class RouteConfig {
      * Example: "/api/users/**" -> "http://localhost:8081"
      */
     private Map<String, String> routes = new HashMap<>();
+
+    /**
+     * Map of path patterns to requests per minute.
+     * Example: "/api/users/**" -> 10
+     */
+    private Map<String, Integer> rateLimits = new HashMap<>();
 }

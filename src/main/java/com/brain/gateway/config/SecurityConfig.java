@@ -20,6 +20,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final com.brain.gateway.security.RoutingFilter routingFilter;
+    private final com.brain.gateway.security.RateLimitingFilter rateLimitingFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -34,7 +35,8 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(routingFilter, JwtAuthenticationFilter.class);
+                .addFilterAfter(rateLimitingFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(routingFilter, com.brain.gateway.security.RateLimitingFilter.class);
 
         return http.build();
     }
