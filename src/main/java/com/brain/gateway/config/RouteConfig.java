@@ -22,4 +22,9 @@ public class RouteConfig {
      * Example: "/api/users/**" -> 10
      */
     private Map<String, Integer> rateLimits = new HashMap<>();
+
+    /**
+     * Map of path patterns to boolean (true if cacheable).
+     */
+    private Map<String, Boolean> cacheable = new HashMap<>();
 }

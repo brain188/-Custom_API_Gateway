@@ -6,15 +6,11 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Map;
 
@@ -23,13 +19,12 @@ import java.util.Map;
 public class RoutingFilter extends OncePerRequestFilter {
 
     private final RouteConfig routeConfig;
-    private final RestClient restClient;
+    private final ProxyService proxyService;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
-        // Skip routing for auth endpoints and static resources
         return path.startsWith("/auth/") || path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs");
     }
 
@@ -39,12 +34,12 @@ public class RoutingFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
         String targetBaseUrl = null;
-        String matchingPattern = null;
+        boolean isCacheablePattern = false;
 
         for (Map.Entry<String, String> entry : routeConfig.getRoutes().entrySet()) {
             if (pathMatcher.match(entry.getKey(), path)) {
-                matchingPattern = entry.getKey();
                 targetBaseUrl = entry.getValue();
+                isCacheablePattern = routeConfig.getCacheable().getOrDefault(entry.getKey(), false);
                 break;
             }
         }
@@ -54,43 +49,36 @@ public class RoutingFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Forward request
-        proxyRequest(request, response, targetBaseUrl);
-    }
-
-    private void proxyRequest(HttpServletRequest request, HttpServletResponse response, String targetBaseUrl) throws IOException {
-        String path = request.getServletPath();
-        String method = request.getMethod();
-        
-        RestClient.RequestBodySpec requestSpec = restClient.method(HttpMethod.valueOf(method))
-                .uri(targetBaseUrl + path);
-
-        // Copy headers
-        Enumeration<String> headerNames = request.getHeaderNames();
-        while (headerNames.hasMoreElements()) {
-            String headerName = headerNames.nextElement();
-            if (!headerName.equalsIgnoreCase("host")) { // Avoid host header conflict
-                requestSpec.header(headerName, request.getHeader(headerName));
-            }
-        }
-
-        // Forward body if present
-        if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method)) {
-            requestSpec.body(request.getInputStream().readAllBytes());
-        }
+        // Check for cache bypass
+        boolean bypassCache = "no-cache".equalsIgnoreCase(request.getHeader("X-No-Cache"));
+        boolean shouldCache = isCacheablePattern && !bypassCache;
 
         try {
-            ResponseEntity<byte[]> targetResponse = requestSpec.retrieve()
-                    .toEntity(byte[].class);
+            Map<String, String> headers = new java.util.HashMap<>();
+            Enumeration<String> headerNames = request.getHeaderNames();
+            while (headerNames.hasMoreElements()) {
+                String name = headerNames.nextElement();
+                headers.put(name, request.getHeader(name));
+            }
 
-            // Copy back response
-            response.setStatus(targetResponse.getStatusCode().value());
-            targetResponse.getHeaders().forEach((name, values) -> {
-                values.forEach(value -> response.addHeader(name, value));
-            });
+            byte[] body = null;
+            if ("POST".equalsIgnoreCase(request.getMethod()) || "PUT".equalsIgnoreCase(request.getMethod())) {
+                body = request.getInputStream().readAllBytes();
+            }
 
-            if (targetResponse.getBody() != null) {
-                response.getOutputStream().write(targetResponse.getBody());
+            ProxyService.CachedResponse proxyResponse = proxyService.executeRequest(
+                    request.getMethod(),
+                    targetBaseUrl,
+                    path,
+                    body,
+                    headers,
+                    shouldCache
+            );
+
+            response.setStatus(proxyResponse.status());
+            proxyResponse.headers().forEach(response::addHeader);
+            if (proxyResponse.body() != null) {
+                response.getOutputStream().write(proxyResponse.body());
             }
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_BAD_GATEWAY);
