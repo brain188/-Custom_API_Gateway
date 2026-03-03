@@ -13,7 +13,8 @@ A high-performance, centralized entry point for microservices built with Spring 
   - **Request Logging**: Monitor method, path, IP, status, and duration.
   - **Header Manipulation**: Inject custom headers for downstream context.
 - **API Documentation**: Integrated Swagger/OpenAPI UI.
-- **Docker Ready**: Easy deployment with Docker and Docker Compose.
+- **CI/CD Ready**: Automated testing and deployment with GitHub Actions and Railway.
+- **Docker Ready**: Easy local development with Docker Compose.
 
 ##  Architecture
 
@@ -56,9 +57,9 @@ graph TD
 ##  Getting Started
 
 ### Prerequisites
-- Java 25
+- Java 21 (LTS)
 - Maven 3.9+
-- Redis (Optional for local development if mocked in tests)
+- Redis (For rate limiting and caching)
 
 ### Local Development
 1. Clone the repository:
@@ -75,10 +76,25 @@ graph TD
    ./mvnw spring-boot:run
    ```
 
-### Using Docker
+### Using Docker (Local)
 ```bash
 docker-compose up --build
 ```
+
+##  CI/CD & Deployment
+
+### GitHub Actions
+The project includes a CI pipeline in `.github/workflows/ci.yml` that automatically:
+- Sets up a Redis service.
+- Builds the project with Maven.
+- Runs all unit and integration tests.
+- Validates the Docker build.
+
+### Deployment (Railway)
+The gateway is configured for automatic deployment on **Railway**. 
+- **Auto-Deploy**: Every push to the `main` branch triggers a new deployment on Railway.
+- **Dynamic Port**: The application uses the `PORT` environment variable provided by Railway.
+- **Health Checks**: Railway monitors the deployment to ensure the gateway is healthy.
 
 ##  API Documentation
 
@@ -103,8 +119,8 @@ gateway.cacheable.[/api/products/**]=true
 
 ##  Testing
 
-The project includes an extensive test suite:
-- **Unit Tests**: Coverage for JWT utilities, rate limiting logic, and proxy services.
+The project includes an extensive test suite with 14 tests covering:
+- **Unit Tests**: JWT utilities, rate limiting logic, and proxy services.
 - **Integration Tests**: End-to-end flows for authentication and gateway routing.
 
 Run all tests:
