@@ -14,12 +14,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.Collections;
-import java.util.List;
 
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Endpoints for user signup and login")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -27,6 +38,9 @@ public class AuthController {
     private final JwtUtil jwtUtil;
 
     @PostMapping("/signup")
+    @Operation(summary = "Register a new user", description = "Creates a new user account with the provided username, email, and password.")
+    @ApiResponse(responseCode = "201", description = "User registered successfully")
+    @ApiResponse(responseCode = "400", description = "Username or email already exists")
     public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             return ResponseEntity.badRequest().body("Username already exists");
@@ -47,6 +61,9 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Authenticate user", description = "Verifies credentials and returns a JWT token if successful.")
+    @ApiResponse(responseCode = "200", description = "Login successful, returns JWT")
+    @ApiResponse(responseCode = "401", description = "Invalid credentials")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         var userOpt = userRepository.findByUsername(request.getUsername());
         
