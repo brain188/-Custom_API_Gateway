@@ -24,7 +24,7 @@ public class RoutingFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
         return path.startsWith("/auth/") || path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs");
     }
 
@@ -32,7 +32,7 @@ public class RoutingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
         String targetBaseUrl = null;
         boolean isCacheablePattern = false;
 
@@ -80,6 +80,7 @@ public class RoutingFilter extends OncePerRequestFilter {
             if (proxyResponse.body() != null) {
                 response.getOutputStream().write(proxyResponse.body());
             }
+            return;
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_BAD_GATEWAY);
             response.getWriter().write("Routing error: " + e.getMessage());

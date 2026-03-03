@@ -43,7 +43,7 @@ public class AuthController {
                 .build();
 
         userRepository.save(user);
-        return ResponseEntity.ok("User registered successfully");
+        return ResponseEntity.status(201).body("User registered successfully");
     }
 
     @PostMapping("/login")

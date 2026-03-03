@@ -16,7 +16,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
         return path.startsWith("/swagger-ui") || path.startsWith("/v3/api-docs");
     }
 
@@ -26,7 +26,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
         long startTime = System.currentTimeMillis();
         String method = request.getMethod();
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
         String clientIp = request.getRemoteAddr();
 
         log.info("Incoming request: {} {} from IP: {}", method, path, clientIp);
